@@ -1,0 +1,9 @@
+CheckoutPage_Definitions:
+  # Keys must match CheckoutPage_Objects entries exactly.
+  # Supported assertion properties:
+  #   ElementCountShouldBe, ShouldContain, EachInGroupShouldContain,
+  #   TableContentShouldBe, ImageGroupAttributes
+  #
+  # Example:
+  #   SubmitButton:
+  #     ElementCountShouldBe: 1

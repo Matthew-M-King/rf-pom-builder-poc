@@ -1,32 +1,142 @@
-# Robot Framework Object Builder POC
+# Robot Framework POM Builder POC
+
+[![Tests](https://github.com/Matthew-M-King/rf-pom-builder-poc/actions/workflows/tests.yml/badge.svg)](https://github.com/Matthew-M-King/rf-pom-builder-poc/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/github/license/Matthew-M-King/rf-pom-builder-poc)](LICENSE)
+[![Last Commit](https://img.shields.io/github/last-commit/Matthew-M-King/rf-pom-builder-poc)](https://github.com/Matthew-M-King/rf-pom-builder-poc/commits/main)
+[![Linting: Robocop](https://img.shields.io/badge/linting-robocop-brightgreen)](https://robocop.readthedocs.io)
+
+A data-driven Page Object Model framework for Robot Framework where locators and element definitions live in **YAML files**, not in `.robot` code. Adding a page, swapping an environment, or changing a locator strategy requires no changes to keyword logic.
 
 ## Table of Contents
 
-- [Robot Framework Object Builder POC](#robot-framework-object-builder-poc)
-  - [Table of Contents](#table-of-contents)
-  - [Preface](#preface)
-  - [Core Registry Structure](#core-registry-structure)
-  - [Register an App](#register-an-app)
-    - [Variables](#variables)
-    - [Example Usage](#example-usage)
-  - [Register Urls](#register-urls)
-  - [Register Users](#register-users)
-  - [Register Pages](#register-pages)
-  - [Object Registry](#object-registry)
-    - [Folder Structure](#folder-structure)
-    - [YAML File Example](#yaml-file-example)
-    - [Object Builder Locator Strategies](#object-builder-locator-strategies)
-  - [Definition Registry](#definition-registry)
-    - [Folder Structure](#folder-structure-1)
+- [Why This Exists](#why-this-exists)
+- [Architecture](#architecture)
+- [Quick Start](#quick-start)
+- [Running Tests](#running-tests)
+- [Core Registry Structure](#core-registry-structure)
+- [Register an App](#register-an-app)
+- [Register Urls](#register-urls)
+- [Register Users](#register-users)
+- [Register Pages](#register-pages)
+- [Object Registry](#object-registry)
+- [Definition Registry](#definition-registry)
+- [Adding a New Page — Worked Example](#adding-a-new-page--worked-example)
 
-## Preface
+---
 
-This project demonstrates a Page Object builder approach
-enabling easy ability to add new page element locators and maintain existing locators. It's also possible to add element definitions which provides the paramters for asserting given elements within the app under test. It's easy to add new sites, pages and page objects.
+## Why This Exists
+
+Standard Robot Framework POM implementations hardcode locators inside `.robot` keyword files. This means a locator change requires a code change, locators for different environments must be branched or conditionally set, and adding a new page requires creating new keyword files.
+
+This framework separates **what to find** (YAML) from **how to find it** (keyword logic):
+
+| Concern | Where it lives |
+|---|---|
+| Locator strategies & XPath construction | `LocatorBuilder.robot` (written once) |
+| Locator definitions per page | `ObjectRegistry/{App}/{Page}.yaml` |
+| Assertion rules per page | `DataSets/{App}/{Env}/{Page}Definitions.yaml` |
+| URL and user data per environment | `DataSets/{App}/{Env}/UrlRegistry.yaml` etc. |
+
+The result: adding a new page is a YAML-only change. Swapping environments passes a single CLI variable.
+
+**Trade-off**: The dynamic dispatch in `LocatorBuilder.robot` (using `Run Keyword` to call strategy-named keywords) makes the locator-build path less statically traceable than hardcoded POM files. This is a deliberate choice — the extensibility gain outweighs the traceability cost for teams adding pages frequently.
+
+---
+
+## Architecture
+
+```
+Tests/*.robot
+    │
+    └─► Bindings (Given/When/Then wrappers)
+            │
+            └─► Page.robot  ← thin facade; consumers import this one file
+                    │
+          ┌─────────┼──────────────────┐
+          ▼         ▼                  ▼
+  Navigation   LocatorBuilder    ElementActions
+  .robot       .robot            .robot
+  (URL ↔       (Build Locator    (Get Texts,
+  page name)   dispatches to     Assert Count,
+               Build Locator:    Sort Order)
+               {Strategy})
+                    │
+          ┌─────────┴──────────────┐
+          ▼                        ▼
+  ObjectRegistry YAMLs       DataSets YAMLs
+  (locator definitions)      (URLs, users, element definitions)
+  Resources/PO/              Settings/DataSets/
+  ObjectRegistry/            {target_app}/{environment}/
+  {target_app}/{Page}.yaml
+```
+
+### Key files
+
+| File | Role |
+|---|---|
+| [Settings/AppRegistry.py](Settings/AppRegistry.py) | RF variable provider — returns app config dict for `${target_app}` |
+| [Settings/YamlValidator.py](Settings/YamlValidator.py) | Validates all YAML registries before the browser starts; also a CLI tool for CI |
+| [Settings/_Settings.robot](Settings/_Settings.robot) | Imports AppRegistry and the active DataSet; defines default CLI variables |
+| [Resources/PO/_Keywords/Page.robot](Resources/PO/_Keywords/Page.robot) | Thin facade — consumers import this one file and get everything transitively |
+| [Resources/PO/_Keywords/Navigation.robot](Resources/PO/_Keywords/Navigation.robot) | `PO: Page: Navigate To`, `PO: Page: Get` (URL → page name) |
+| [Resources/PO/_Keywords/LocatorBuilder.robot](Resources/PO/_Keywords/LocatorBuilder.robot) | All `Build Locator: {Strategy}` keywords; dispatches via `Run Keyword` |
+| [Resources/PO/_Keywords/ElementActions.robot](Resources/PO/_Keywords/ElementActions.robot) | Element text retrieval, count and sort assertions |
+| [Resources/PO/_Keywords/_AssertDefinitions.robot](Resources/PO/_Keywords/_AssertDefinitions.robot) | Iterates `${PageName_Definitions}` and dispatches assertion keywords |
+| [Resources/Bindings/PageBindings.robot](Resources/Bindings/PageBindings.robot) | BDD-style Given/When/Then bindings consumed by test cases |
+
+---
+
+## Quick Start
+
+**Prerequisites:** Python 3.9+
+
+```bash
+pip install -r requirements.txt
+rfbrowser init
+```
+
+> Tests run against live demo sites ([saucedemo.com](https://www.saucedemo.com) and [the-internet.herokuapp.com](https://the-internet.herokuapp.com)). An internet connection is required.
+
+---
+
+## Running Tests
+
+Each app must be run with its own `target_app` variable — the settings (URL registry, page objects, definitions) are all app-scoped and loaded at suite initialisation time, so mixing two apps in one `robot .` command is not supported.
+
+Run all apps (uses `run_tests.ps1`):
+```powershell
+.\run_tests.ps1              # headed
+.\run_tests.ps1 -Headless    # headless
+```
+
+Run a single app directly:
+```bash
+robot -v target_app:SwagLabs -i swaglabs -d Tests/Reports .
+robot -v target_app:ChallengingDom -i ChallengingDom -d Tests/Reports .
+```
+
+Override environment:
+```bash
+robot -v target_app:SwagLabs -v environment:Dev -i swaglabs -d Tests/Reports .
+```
+
+Run a single test by name:
+```bash
+robot -v target_app:SwagLabs -t "Scenario: Assert Login Page Elements" .
+```
+
+**Available variables**
+
+| Variable | Default | Options |
+|---|---|---|
+| `target_app` | `SwagLabs` | `SwagLabs`, `ChallengingDom` |
+| `environment` | `Staging` | `Dev`, `Staging`, `UAT` |
+| `browser` | `chromium` | `chromium`, `firefox`, `webkit`, `msedge` |
+| `headless` | `${FALSE}` | `True`, `False` |
+
+---
 
 ## Core Registry Structure
-
-Below attempts to illustrate the core file structure utilised when registering new apps, pages, objects and definitions
 
 ```
 └───Settings
@@ -36,175 +146,106 @@ Below attempts to illustrate the core file structure utilised when registering n
 │   └───DataSets
 │   │  │
 │   │  └───ChallengingDom
-│   │  │   │   
-│   │  │   └───Dev
-│   │  │   │   _DatasetRegistry.robot
-│   │  │   │   MainPageDefinitions.yaml
-│   │  │   │   UrlRegistry.yaml
-│   │  │   │   UserRegistry.yaml
-│   │  │   │
-│   │  │   └───Staging
-│   │  │   │   _DatasetRegistry.robot
-│   │  │   │   MainPageDefinitions.yaml
-│   │  │   │   UrlRegistry.yaml
-│   │  │   │   UserRegistry.yaml
-│   │  │   │
-│   │  │   └───UAT
-│   │  │   │   _DatasetRegistry.robot
-│   │  │   │   MainPageDefinitions.yaml
-│   │  │   │   UrlRegistry.yaml
-│   │  │   │   UserRegistry.yaml
-│   │  │   │
+│   │  │   └───Dev / Staging / UAT
+│   │  │       _DatasetRegistry.robot
+│   │  │       MainPageDefinitions.yaml
+│   │  │       UrlRegistry.yaml
+│   │  │       UserRegistry.yaml
+│   │  │
 │   │  └───SwagLabs
-│   │  │   │
-│   │  │   └───Dev
-│   │  │   │   _DatasetRegistry.robot
-│   │  │   │   LoginPageDefinitions.yaml
-│   │  │   │   ProductsPageDefinitions.yaml
-│   │  │   │   ShoppingCartPageDefinitions.yaml
-│   │  │   │   UrlRegistry.yaml
-│   │  │   │   UserRegistry.yaml
-│   │  │   │
-│   │  │   └───Staging
-│   │  │   │   _DatasetRegistry.robot
-│   │  │   │   LoginPageDefinitions.yaml
-│   │  │   │   ProductsPageDefinitions.yaml
-│   │  │   │   ShoppingCartPageDefinitions.yaml
-│   │  │   │   UrlRegistry.yaml
-│   │  │   │   UserRegistry.yaml
-│   │  │   │
-│   │  │   └───UAT
-│   │  │   │   _DatasetRegistry.robot
-│   │  │   │   LoginPageDefinitions.yaml
-│   │  │   │   ProductsPageDefinitions.yaml
-│   │  │   │   ShoppingCartPageDefinitions.yaml
-│   │  │   │   UrlRegistry.yaml
-│   │  │   │   UserRegistry.yaml
+│   │      └───Dev / Staging / UAT
+│   │          _DatasetRegistry.robot
+│   │          LoginPageDefinitions.yaml
+│   │          ProductsPageDefinitions.yaml
+│   │          ShoppingCartPageDefinitions.yaml
+│   │          UrlRegistry.yaml
+│   │          UserRegistry.yaml
 │
 └───Resources
-│   │
-│   └───PO   
-│       └───ObjectRegistry
-│       │   └───ChallengingDom
-│       │   │   │   MainPage.yaml 
-│       │   │   
-│       │   └───SwagLabs
-│       │       │   LoginPage.yaml
-│       │       │   ProductsPage.yaml
-│       │
-│       └───PageRegistry
-│       │   │   _ChallengingDomVariables.robot
-│       │   │   _SwagLabsVariables.robot
-
+    └───PO
+        ├───ObjectRegistry
+        │   ├───ChallengingDom
+        │   │   MainPage.yaml
+        │   └───SwagLabs
+        │       LoginPage.yaml
+        │       ProductsPage.yaml
+        │       ShoppingCartPage.yaml
+        │
+        └───PageRegistry
+            _ChallengingDomVariables.robot
+            _SwagLabsVariables.robot
 ```
 
 ---
+
 ## Register an App
 
-`\\Settings\AppRegistry.py`
+`Settings/AppRegistry.py`
 
-### Variables
-
-| Variable | Description |
-| ----------- | ----------- |
-| app3 | Dictionary containing the setting variables for core app values |
-| default_page | The landing page of the app, name can be personal preference but will be referenced in further stages |
-| dynamic_url_contains | Partial text of a dynamic url, None if App doesn't have dynamic pages |
-| dynamic_page_name | Name reference for dynamic page, personal preference but will be referenced in further stages |
-
----
-### Example Usage
-
-In the below example, "ExampleApp" in get_variables() is the ${target_app} this variable can be set at command line e.g. robot -d reports -v target_app:ExampleApp -t "My Test Case" .
+Add a new entry in `get_variables()` keyed by the app name you'll pass as `${target_app}`:
 
 ```python
 app3 = {
-    'default_page': 'MainPage',
-    'dynamic_url_contains': None,
-    'dynamic_page_name': None
-    }
+    'default_page': 'MainPage',       # landing page name (must match UrlsToPages key)
+    'dynamic_url_contains': None,     # partial URL fragment for dynamic pages, or None
+    'dynamic_page_name': None         # name for dynamic pages, or None
+}
 
 def get_variables(arg):
-    if arg == 'SwagLabs':
-        return app1
-    elif arg == 'ChallengingDom':
-        return app2
-    elif arg == 'ExampleApp':
+    if arg == 'ExampleApp':
         return app3
 ```
+
 ---
+
 ## Register Urls
-`\\Settings\DataSets\{target_app}\{environment}\UrlRegistry.yaml`
 
-URL's are registered at the App -> Environment level within a Dataset, because of this, it is important that the ${target_app} and ${environment} variables match with the folder structure.
-
-| Property | Description |
-| ----------- | ----------- |
-| BaseUrl | Takes a set of target app names as key and main url as values |
-| UrlsToPages | Maps page urls to a page name, page names can be personal preference but will be referenced in further stages. |
-
-Each url key/value should be entered under target app name as below:
+`Settings/DataSets/{target_app}/{environment}/UrlRegistry.yaml`
 
 ```yaml
 BaseUrl:
   ExampleApp: https://www.example_app.com/
 UrlsToPages:
-  MainPage: BaseUrl
-  ExamplePage: example_page
-  AnotherExamplePage: hello_world.html
+  MainPage: BaseUrl          # resolves to BaseUrl directly
+  ExamplePage: example_page  # resolves to BaseUrl + fragment
 ```
 
 ---
 
 ## Register Users
-`\\Settings\DataSets\{target_app}\{environment}\UserRegistry.yaml`
 
-For registering new users. Add a login type such as __Default__, __Locked__, __Invalid__ etc. The user names and passwords will go under the user types as per the example below.
+`Settings/DataSets/{target_app}/{environment}/UserRegistry.yaml`
 
 ```yaml
 UserLogins:
   Default:
     UserName: standard_user
     Password: secret_sauce
-  Locked: 
+  Locked:
     UserName: locked_out_user
     Password: secret_sauce
-  Problem:
-    UserName: problem_user
-    Password: secret_sauce
-  Glitched:
-    UserName: performance_glitch_user
-    Password: secret_sauce 
-
 ```
+
 ---
+
 ## Register Pages
-`\\PO\PageRegistry\_ExampleAppVariables.robot`
 
-Add a file e.g. \_ExampleAppVariables.robot to the PageRegistry - This will contain references to yaml files (Page Object and Definition files).
-Note the name of the file is important, it should be prefixed with underscore followed by the target app name and suffixed with "Variables" e.g. "_${target_app}Variables.robot"
+`Resources/PO/PageRegistry/_{target_app}Variables.robot`
 
-The contents of the file will reference yaml variable files for element definitions (contains a "blueprint" of the types of values to assert for specified objects) and page objects (yaml file containing locators)
-
-The file content would look similar to this:
+Create a file named `_{YourApp}Variables.robot` — the name is resolved dynamically by `LocatorBuilder.robot`. It only needs `Variables` imports pointing to the ObjectRegistry YAMLs:
 
 ```robotframework
 *** Settings ***
 Variables  ../ObjectRegistry/${target_app}/ExamplePage.yaml
 ```
+
 ---
+
 ## Object Registry
-The Object Registry is a repository containing yaml files, each yaml file is based on a page of the app and contains the page object element locators defined in various forms.
 
-### Folder Structure
+`Resources/PO/ObjectRegistry/{target_app}/{Page}.yaml`
 
-When adding a Object Registry yaml file, the directory structure is important - As seen in Register Pages section, the yaml is referenced within ../ObjectRegistry/${target_app}/ExamplePage.yaml
-
-Therefore continuing with the example we would add a new folder __ExampleApp__ under __ObjectRegistry__ folder
-
----
-
-### YAML File Example
+Each YAML file represents one page. The variable block must be named `{PageName}_Objects`.
 
 ```yaml
 LoginPage_Objects:
@@ -218,80 +259,152 @@ LoginPage_Objects:
     Name: password
 ```
 
-### Object Builder Locator Strategies
+### Locator strategies
 
-| LocatorStrategy | Description |
-| ----------- | ----------- |
-| ParentReferenceWithXpathLookup | Reference a parent element as prefix - child locator directly added as xpath 
-| ParentReferenceWithContainsAttribute | Reference a parent element as prefix - child locator built with contains attribute 
-| ParentReferenceWithType | Reference a parent element as prefix - child is simply an element type 
-| ParentReferenceWithAttribute | Reference a parent element as prefix - child locator built with attribute 
-| ParentReferenceWithText | Reference a parent element as prefix - child locator built with expected text 
-| XPathLookup | direct xpath lookup 
-| WithAttribute | built with attribute 
-| WithText | built with expected text 
-| WithContainsAttribute | built with contains attribute 
-| SelectFromGroupByCSSProperty | References an element group and RF keyword will run to derive correct element from the group based on CCS properties 
+| Strategy | Required fields | Description |
+|---|---|---|
+| `XPathLookup` | `Xpath` | Direct XPath expression |
+| `WithAttribute` | `ElementType`, `Attribute`, `Name` | `//type[@attr="name"]` |
+| `WithText` | `ElementType`, `Text` | `//type[normalize-space()="text"]` |
+| `WithContainsAttribute` | `ElementType`, `Attribute`, `Name` | `//type[contains(@attr, "name")]` |
+| `ParentReferenceWithXpathLookup` | `ParentReference` + XPathLookup fields | Parent locator prefixed to child XPath |
+| `ParentReferenceWithAttribute` | `ParentReference` + WithAttribute fields | Parent locator prefixed to child attribute locator |
+| `ParentReferenceWithText` | `ParentReference` + WithText fields | Parent locator prefixed to child text locator |
+| `ParentReferenceWithContainsAttribute` | `ParentReference` + WithContainsAttribute fields | Parent locator prefixed to contains-attribute locator |
+| `ParentReferenceWithType` | `ParentReference`, `ElementType` | Parent locator prefixed to `//type` |
+| `SelectFromGroupByCSSProperty` | `GroupReference`, `CSSPropertyType`, `PropertyValue` | Iterates a group of elements and returns the one matching a CSS property value |
 
 ---
+
 ## Definition Registry
-The definition registry yaml files aim to describe the behaviour and properties/attributes of locators on a page with the intention to guide the automation in asserting page specifics in a simple, maintainable manner. The definition files are stored in datasets allowing plenty of room for scalability and enhancements.
 
-### Folder Structure
+`Settings/DataSets/{target_app}/{environment}/{Page}Definitions.yaml`
 
-When adding a Definition Registry yaml file, the directory structure is important. The definition files are stored in datasets which can differ at an environment level  
-
-`\\Settings\DataSets\{target_app}\{environment}\ExamplePageDefinitions.yaml`
-
-`\\Settings\DataSets\{target_app}\{environment}\AnotherExamplePageDefinitions.yaml`
-
-Each of the environment directories will contain a _Definitions.robot file to import the variables from the yaml's
-
-`\\Settings\DataSets\{target_app}\{environment}\_Definitions.robot`
-
-```robotframework
-*** Settings ***
-Variables  ExamplePageDefinitions.yaml
-Variables  AnotherExamplePageDefinitions.yaml
-```
-
+Definition files describe what to assert on each page. The variable block must be named `{PageName}_Definitions`, and element keys must match the corresponding `{PageName}_Objects` keys.
 
 ```yaml
 LoginPage_Definitions:
   Username:
-    ElementCountShouldBe: 1
-  Password:
-    ElementCountShouldBe: 1
-  LoginButton:
     ElementCountShouldBe: 1
   LoginCredentials:
     ElementCountShouldBe: 1
     ShouldContain:
       - standard_user
       - locked_out_user
-      - problem_user
-      - performance_glitch_user
-  AcceptedUsernamesTitle:
-    ElementCountShouldBe: 1
-    ShouldContain:
-      - Accepted usernames are
 ```
 
-Note that locator attribute should be named the same as the object in the ObjectRegistry
+Import each definition file in `Settings/DataSets/{target_app}/{environment}/_DatasetRegistry.robot`:
 
-__ObjectRegistry__
+```robotframework
+*** Settings ***
+Variables  LoginPageDefinitions.yaml
+Variables  ProductsPageDefinitions.yaml
+```
+
+### Supported assertion properties
+
+| Property | Description |
+|---|---|
+| `ElementCountShouldBe` | Asserts the element appears exactly N times on the page |
+| `ShouldContain` | Asserts the element's text contains all listed strings |
+| `EachInGroupShouldContain` | For a parent-reference group: asserts each indexed child contains the expected text |
+| `TableContentShouldBe` | Asserts table column content matches a defined structure |
+| `ImageGroupAttributes` | Asserts `alt` and `src` attributes for a group of images |
+
+---
+
+## Adding a New Page — Worked Example
+
+This walkthrough adds a `CheckoutPage` to the SwagLabs app. Every step is a file you create or extend — no changes to keyword logic required.
+
+### 1. Add the URL
+
+`Settings/DataSets/SwagLabs/{Env}/UrlRegistry.yaml` — repeat for Dev, Staging, UAT:
 
 ```yaml
-LoginPage_Objects:
-  Username:
+UrlsToPages:
+  CheckoutPage: checkout-step-one   # appended to BaseUrl
+```
+
+### 2. Add the Object Registry
+
+`Resources/PO/ObjectRegistry/SwagLabs/CheckoutPage.yaml`
+
+The variable block name **must** be `CheckoutPage_Objects`:
+
+```yaml
+CheckoutPage_Objects:
+  FirstNameInput:
+    LocatorStrategy: WithAttribute
+    ElementType: input
+    Attribute: data-test
+    Name: firstName
+
+  LastNameInput:
+    LocatorStrategy: WithAttribute
+    ElementType: input
+    Attribute: data-test
+    Name: lastName
+
+  ContinueButton:
     LocatorStrategy: XPathLookup
-    Xpath: //input[@data-test="username"]
+    Xpath: //input[@data-test="continue"]
+
+  FormErrorMessage:
+    LocatorStrategy: WithContainsAttribute
+    ElementType: h3
+    Attribute: data-test
+    Name: error
 ```
 
-__DefinitionRegistry__
+### 3. Register it in the Page Registry
+
+`Resources/PO/PageRegistry/_SwagLabsVariables.robot` — add one line:
+
+```robotframework
+*** Settings ***
+Variables  ../ObjectRegistry/${target_app}/CheckoutPage.yaml
+```
+
+### 4. Add the Definition file
+
+`Settings/DataSets/SwagLabs/{Env}/CheckoutPageDefinitions.yaml` — repeat for Dev, Staging, UAT.
+
+Element keys must match `CheckoutPage_Objects` exactly:
 
 ```yaml
-LoginPage_Definitions:
-  Username:
+CheckoutPage_Definitions:
+  FirstNameInput:
     ElementCountShouldBe: 1
+  LastNameInput:
+    ElementCountShouldBe: 1
+  ContinueButton:
+    ElementCountShouldBe: 1
+```
+
+### 5. Import the Definition file
+
+`Settings/DataSets/SwagLabs/{Env}/_DatasetRegistry.robot` — add one line:
+
+```robotframework
+*** Settings ***
+Variables  CheckoutPageDefinitions.yaml
+```
+
+### Verify
+
+Preview any locator without running the browser:
+
+```bash
+python tools/preview_locator.py SwagLabs CheckoutPage ContinueButton
+# [CheckoutPage → ContinueButton]
+# Strategy : XPathLookup
+# Locator  : //input[@data-test="continue"]
+```
+
+Run the YAML validator to catch typos before launching the suite:
+
+```bash
+python Settings/YamlValidator.py SwagLabs Staging
+# OK Registry validation passed for SwagLabs/Staging
 ```

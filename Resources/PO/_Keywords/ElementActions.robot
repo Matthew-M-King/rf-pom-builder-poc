@@ -1,15 +1,16 @@
 *** Settings ***
+Library     Browser
 Library     Collections
-Library     SeleniumLibrary
-Resource    _ObjectBuilder.robot
+Library     String
+Resource    LocatorBuilder.robot
 
 
 *** Keywords ***
-PO: Common: Get Texts
+PO: Page: Get Texts
     [Documentation]    Get list of text from multiple web elements
     [Arguments]    ${target_element}
     ${locator}    Build Locator    ${target_element}
-    @{elements}    Get WebElements    ${locator}
+    @{elements}    Get Elements    ${locator}
     @{element_text_list}    Create List
     FOR    ${element}    IN    @{elements}
         ${element_text}    Get Text    ${element}
@@ -17,7 +18,7 @@ PO: Common: Get Texts
     END
     [Return]    ${element_text_list}
 
-PO: Common: Locator Should Contain Value
+PO: Page: Locator Should Contain Value
     [Arguments]    ${target_element}    ${expected_text}
     ${locator}    Build Locator    ${target_element}
     ${actual_text}    Get Text    ${locator}
@@ -25,23 +26,25 @@ PO: Common: Locator Should Contain Value
         Should Contain    ${actual_text}    ${text}
     END
 
-PO: Common: Await And Assert Element Text
+PO: Page: Await And Assert Element Text
     [Arguments]    ${target_element}    ${text}
     ${locator}    Build Locator    ${target_element}
-    Wait Until Element Is Visible    ${locator}
-    Element Text Should Be    ${locator}    ${text}
+    ${actual}    Get Text    ${locator}
+    Should Be Equal As Strings    ${actual}    ${text}
 
-PO: Common: Await And Assert X Number Of Elements
+PO: Page: Await And Assert X Number Of Elements
     [Arguments]    ${target_element}    ${count}
     ${locator}    Build Locator    ${target_element}
-    Wait Until Element Is Visible    ${locator}
-    Page Should Contain Element    ${locator}    limit=${count}
+    @{elements}    Get Elements    ${locator}
+    ${actual}    Get Length    ${elements}
+    Should Be Equal As Integers    ${actual}    ${count}
 
-PO: Common: Assert Element Group Sort Order
+PO: Page: Assert Element Group Sort Order
     [Arguments]    ${target_elements}    ${order}
     ${order}    Convert To Lower Case    ${order}
 
-    ${texts}    PO: Common: Get Texts    ${target_elements}
+    ${texts}    PO: Page: Get Texts    ${target_elements}
+    Should Not Be Empty    ${texts}    No elements found for sort assertion on '${target_elements}'
     @{actual_list}    Create List
 
     IF    "numerical" in "${order}"

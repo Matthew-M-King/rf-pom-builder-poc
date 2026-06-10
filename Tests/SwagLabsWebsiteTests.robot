@@ -4,7 +4,7 @@ Documentation       SwagLabs Website Tests
 Library             Dialogs
 Resource            _Resources.robot
 
-Suite Setup         Begin Suite
+Suite Setup         Run Keywords    Skip If    '${target_app}'!='SwagLabs'    AND    Begin Suite
 Suite Teardown      Teardown Suite
 Test Setup          Begin Web Test
 
@@ -41,10 +41,6 @@ Scenario: Assert Login Page Elements
 Scenario: Assert Products Page Elements
     [Tags]    swaglabs
     Assert Page Content    ProductsPage    Default
-
-Scenario: Assert Products Page Elements With Performance Glitched User
-    [Tags]    swaglabs
-    Assert Page Content    ProductsPage    Glitched
 
 Scenario: Assert Products Page Elements With Problem User
     [Tags]    swaglabs

@@ -1,49 +1,64 @@
 *** Settings ***
-Resource    ../PageRegistry/_${target_app}Variables.robot
+Library     Browser
 Library     Collections
+Library     String
+Resource    ../../Utility/ShorthandUtility.robot
+Resource    Navigation.robot
+Resource    CustomStrategies.robot
 
 
 *** Keywords ***
 Build Locator
     [Documentation]    Build locator based on locator definition yaml files and supported locator strategies:
-    ...    ParentReferenceWithXpathLookup
-    ...    ParentReferenceWithType
-    ...    ParentReferenceWithAttribute
-    ...    ParentReferenceWithRelationshipAxes
-    ...    ParentReferenceWithText
-    ...    XPathLookup
-    ...    WithAttribute
-    ...    WithText
-    ...    SelectFromGroupByCSSProperty
+    ...    XPathLookup, WithAttribute, WithText, WithContainsAttribute, WithType,
+    ...    SelectFromGroupByCSSProperty,
+    ...    ParentReference{Strategy} — where {Strategy} is any of the above except SelectFromGroupByCSSProperty.
+    ...    All strategies optionally support UseRelation/Relation/RelationElementType for XPath axes.
     [Arguments]    ${target_element}    ${extension}=${EMPTY}    ${page}=${NONE}
 
-    # Get the current page as we will use it in the yaml lookup
+    # page can be injected for parent-reference recursion; otherwise derive it from the current URL
     ${page}    ??    ${page}    PO: Page: Get
-    ${properties}    <-    ${${page}_Objects.${target_element}}
-
-    ${is_parent_ref}    Run Keyword And Return Status
-    ...    Should Contain
-    ...    ${properties.LocatorStrategy}
-    ...    ParentReference
-    IF    ${is_parent_ref}
-        ${locator_strategy}    <-    ParentReference
-    ELSE
-        ${locator_strategy}    <-    ${properties.LocatorStrategy}
+    TRY
+        ${properties}    <-    ${${page}_Objects.${target_element}}
+    EXCEPT    AS    ${err}
+        Fail
+        ...    Object '${target_element}' not found on page '${page}' — check ObjectRegistry/${page}.yaml
     END
 
-    # Decide locator strategy to build based on yaml properties and run keyword
-    ${locator}    Run Keyword    Build Locator: ${locator_strategy}    ${properties}    ${page}    ${extension}
+    ${strategy}    <-    ${properties.LocatorStrategy}
+    IF    $strategy.startswith('ParentReference')
+        ${locator_strategy}    <-    ParentReference
+    ELSE
+        ${locator_strategy}    <-    ${strategy}
+    END
+
+    # Strategy dispatch — any "Build Locator: {StrategyName}" keyword in scope is automatically
+    # available. Built-in strategies live in this file; custom ones go in CustomStrategies.robot.
+    TRY
+        ${locator}    Run Keyword    Build Locator: ${locator_strategy}    ${properties}    ${page}    ${extension}
+    EXCEPT    No keyword with name*    type=glob
+        Fail
+        ...    Unknown LocatorStrategy '${locator_strategy}' for '${target_element}' on page '${page}'.
+        ...    Add 'Build Locator: ${locator_strategy}' to CustomStrategies.robot or fix ObjectRegistry/${page}.yaml.
+    END
+    IF    ${debug_locator_build}
+        Log
+        ...    [Locator Build] app=${target_app} page=${page} element=${target_element} strategy=${locator_strategy}\n  ${locator}
+        ...    WARN
+    END
     [Return]    ${locator}
 
 Build Locator: ParentReference
+    # Strips "ParentReference" prefix from the strategy name, resolves the parent element
+    # recursively, then prepends it — allowing arbitrarily deep parent chains
     [Arguments]    ${properties}    ${page}    ${extension}=${EMPTY}
     ${child_locator_strategy}    Remove String    ${properties.LocatorStrategy}    ParentReference
     ${parent_reference}    <-    ${properties.ParentReference}
-    ${parent_locator}    Build Locator    ${parent_reference}
+    ${parent_locator}    Build Locator    ${parent_reference}    page=${page}
     ${locator}    Run Keyword    Build Locator: ${child_locator_strategy}    ${properties}    ${page}    ${extension}
     Run Keyword And Return    <-    ${parent_locator}${locator}
 
-Build Locator: XPathLookUp
+Build Locator: XPathLookup
     [Arguments]    ${properties}    ${page}    ${extension}=${EMPTY}
     ${axes}    Build Locator: Add Relationship Axes    ${properties}    ${page}    ${extension}
     Run Keyword And Return    <-    ${axes}${properties.Xpath}
@@ -82,10 +97,11 @@ Build Locator: SelectFromGroupByCSSProperty
     [Arguments]    ${properties}    ${page}    ${extension}=${EMPTY}
     ${group_reference}    <-    ${properties.GroupReference}
     ${css_property_type}    <-    ${properties.CSSPropertyType}
-    ${group_locator}    Build Locator    ${group_reference}
-    ${group}    Get WebElements    ${group_locator}
+    ${group_locator}    Build Locator    ${group_reference}    page=${page}
+    @{group}    Get Elements    ${group_locator}
     FOR    ${element}    IN    @{group}
-        ${element_property}    Call Method    ${element}    value_of_css_property    ${css_property_type}
+        ${element_property}    Evaluate JavaScript    ${element}
+        ...    e => window.getComputedStyle(e).getPropertyValue('${css_property_type}')
         Return From Keyword If    "${element_property}"=="${properties.PropertyValue}"    ${element}
     END
 

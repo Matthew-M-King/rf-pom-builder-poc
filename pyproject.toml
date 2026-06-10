@@ -1,0 +1,13 @@
+[tool.robocop]
+include = ["all"]
+exclude = [
+    "missing-doc-keyword",
+    "missing-doc-test-case",
+    "missing-doc-suite",
+    "too-few-calls-in-keyword",
+    "too-many-calls-in-keyword",
+]
+configure = [
+    "line-too-long:line_length:120",
+    "wrong-case-in-keyword-name:convention:first_word_capitalized",
+]

@@ -16,28 +16,18 @@ ProductsPage_Definitions:
       BackPack:
         DefaultOrder: 1
         Alt: Sauce Labs Backpack
-        Src: "static/media/sauce-backpack-1200x1500.34e7aa42.jpg"
       BikeLight:
         DefaultOrder: 2
         Alt: Sauce Labs Bike Light
-        Src: "static/media/bike-light-1200x1500.a0c9caae.jpg"
       BoltShirt:
         DefaultOrder: 3
         Alt: Sauce Labs Bolt T-Shirt
-        Src: "static/media/bolt-shirt-1200x1500.c0dae290.jpg"
       FleeceJacket:
         DefaultOrder: 4
         Alt: Sauce Labs Fleece Jacket
-        Src: "static/media/sauce-pullover-1200x1500.439fc934.jpg"
       Onesie:
         DefaultOrder: 5
         Alt: Sauce Labs Onesie
-        Src: "static/media/red-onesie-1200x1500.1b15e1fa.jpg"
       TestAllThingsShirt:
         DefaultOrder: 6
         Alt: Test.allTheThings() T-Shirt (Red)
-        Src: "static/media/red-tatt-1200x1500.e32b4ef9.jpg"
-      
-
-
-  

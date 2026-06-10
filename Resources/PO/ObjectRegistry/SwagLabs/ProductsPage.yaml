@@ -3,7 +3,7 @@ ProductsPage_Objects:
     LocatorStrategy: WithAttribute
     ElementType: select
     Attribute: data-test
-    Name: product_sort_container
+    Name: product-sort-container
   SortProductsActiveOption:
     LocatorStrategy: ParentReferenceWithAttribute
     ParentReference: SortProducts
@@ -35,7 +35,7 @@ ProductsPage_Objects:
     ParentReference: InventoryItemImages
     ElementType: a
   InventoryItemNames:
-    LocatorStrategy: ParentReferenceWithAttribute
+    LocatorStrategy: ParentReferenceWithContainsAttribute
     ParentReference: InventoryItem
     ElementType: div
     Attribute: class

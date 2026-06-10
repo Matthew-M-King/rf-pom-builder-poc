@@ -2,9 +2,10 @@
 Documentation       Resource file containing bindings for page related steps
 
 Resource            ../PO/_Keywords/_AssertDefinitions.robot
+Resource            ../PO/_Keywords/Input.robot
 Resource            ../PO/_Keywords/List.robot
-Resource            ../PO/_Keywords/Page.robot
-Resource            ../PO/_Keywords/Table.robot
+Resource            ../PO/_Keywords/Pages/LoginPagePO.robot
+Library             ../Utility/TablesUtility.py
 
 
 *** Keywords ***
@@ -47,13 +48,13 @@ the following option should be selected in list:
     Register Table Keyword    PO: List: Assert Active Option    Option=value    List=target_element
 
 the "${target_elements}" should be sorted high to low ${value_type}
-    PO: Common: Assert Element Group Sort Order    ${target_elements}    HighToLow${value_type}
+    PO: Page: Assert Element Group Sort Order    ${target_elements}    HighToLow${value_type}
 
 the "${target_elements}" should be sorted low to high ${value_type}
-    PO: Common: Assert Element Group Sort Order    ${target_elements}    LowToHigh${value_type}
+    PO: Page: Assert Element Group Sort Order    ${target_elements}    LowToHigh${value_type}
 
 the "${target_element}" should display text: ${text}
-    PO: Common: Await And Assert Element Text    ${target_element}    ${text}
+    PO: Page: Await And Assert Element Text    ${target_element}    ${text}
 
 the page should display following number of "${target_element}": ${amount}
-    PO: Common: Await And Assert X Number Of Elements    ${target_element}    ${amount}
+    PO: Page: Await And Assert X Number Of Elements    ${target_element}    ${amount}

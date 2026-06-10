@@ -1,3 +1,8 @@
+*** Settings ***
+Documentation       Common keywords for shorthand syntax and utilities.
+Library             Collections
+
+
 *** Keywords ***
 ??
     [Documentation]    Coalescing operator for {NONE} or {EMPTY} values.

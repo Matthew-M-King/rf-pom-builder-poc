@@ -1,37 +1,32 @@
 *** Settings ***
-Library     SeleniumLibrary
+Library     Browser
 Library     String
-Resource    Common.robot
+Resource    Page.robot
 
 
 *** Keywords ***
 PO: Input: Await And Input Text
     [Arguments]    ${target_element}    ${text}
     ${locator}    Build Locator    ${target_element}
-    Wait Until Element Is Visible    ${locator}
-    Input Text    ${locator}    ${text}
+    Fill Text    ${locator}    ${text}
 
 PO: Input: Await And Click Button
     [Arguments]    ${target_element}
     ${locator}    Build Locator    ${target_element}
-    Wait Until Element Is Visible    ${locator}
-    Click Button    ${locator}
+    Click    ${locator}
 
 PO: Input: Await And Click Link
     [Arguments]    ${target_element}
     ${locator}    Build Locator    ${target_element}
-    Wait Until Element Is Visible    ${locator}
-    Click Link    ${locator}
+    Click    ${locator}
 
 PO: Input: Await And Click X Number Of Buttons
     [Arguments]    ${target_elements}    ${amount}
     ${locator}    Build Locator    ${target_elements}
-    Wait Until Element Is Visible    ${locator}
-    ${locators}    Get WebElements    ${locator}
-
-    ${index}    <-    ${0}
-    FOR    ${element}    IN    @{locators}
-        Click Button    ${element}
-        ${index}    Evaluate    ${index}+1
-        Exit For Loop IF    ${index}==${amount}
+    # Re-evaluate the locator each iteration: Get Elements returns nth-indexed locators that
+    # re-resolve against current DOM, so clicking [0] each time always targets the first
+    # remaining unclicked button after prior clicks change previous buttons' state
+    FOR    ${_}    IN RANGE    ${amount}
+        ${elements}    Get Elements    ${locator}
+        Click    ${elements}[0]
     END

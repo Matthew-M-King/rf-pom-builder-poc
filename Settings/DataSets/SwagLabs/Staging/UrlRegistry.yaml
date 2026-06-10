@@ -3,3 +3,4 @@ UrlsToPages:
     LoginPage: BaseUrl
     ProductsPage: inventory.html
     ShoppingCartPage: cart.html
+    CheckoutPage: checkout-step-one

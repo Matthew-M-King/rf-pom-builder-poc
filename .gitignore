@@ -19,8 +19,22 @@ var/
 .installed.cfg
 *.egg
 
-# robot logs. 
+# local environment config
+.env
+
+# robot / playwright output
 log.html
 report.html
 output.xml
+Reports.xml
+xunit*.xml
 selenium-screenshot-*.png
+playwright-log.txt
+Tests/Reports/
+
+# Browser library (Playwright binaries and trace files)
+browser/traces/
+browser/browser_path.txt
+
+# Python caches
+.pytest_cache/

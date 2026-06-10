@@ -2,7 +2,7 @@
 Documentation  Challenging DOM Page Verify
 
 Resource        _Resources.robot
-Suite Setup     Begin Suite
+Suite Setup     Run Keywords    Skip If    '${target_app}'!='ChallengingDom'    AND    Begin Suite
 Suite Teardown  Teardown Suite
 
 *** Test Cases ***

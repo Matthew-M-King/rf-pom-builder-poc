@@ -1,0 +1,11 @@
+# Core test libraries — pinned to known-good versions.
+# To update: pip install --upgrade <package>, run tests, then update the pin here.
+robotframework==6.1.1
+robotframework-browser==18.1.0
+
+# Static analysis
+# NOTE: robocop 5.x requires Python ≥ 3.8 and robotframework ≥ 5.0
+robotframework-robocop>=5.0,<6.0
+
+# YAML validation utility (Settings/YamlValidator.py)
+PyYAML>=6.0,<7.0

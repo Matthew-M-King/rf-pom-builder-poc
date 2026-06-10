@@ -1,6 +1,6 @@
 *** Settings ***
+Resource    ../PO/_Keywords/Input.robot
 Resource    ../PO/_Keywords/List.robot
-Resource    ../PO/_Keywords/Page.robot
 Resource    ../PO/_Keywords/Table.robot
 
 
@@ -8,9 +8,9 @@ Resource    ../PO/_Keywords/Table.robot
 ${r:(.*)?} ${r:(has|adds)?} following number of products ${r:(in|to)?} basket: ${amount}
     PO: Input: Await And Click X Number Of Buttons    InventoryAddToCart    ${amount}
 
-    ${product_names}    PO: Common: Get Texts    InventoryItemNames
-    ${product_prices}    PO: Common: Get Texts    InventoryItemPrices
-    ${product_descs}    PO: Common: Get Texts    InventoryItemDescriptions
+    ${product_names}    PO: Page: Get Texts    InventoryItemNames
+    ${product_prices}    PO: Page: Get Texts    InventoryItemPrices
+    ${product_descs}    PO: Page: Get Texts    InventoryItemDescriptions
 
     ${current_product_names}    Get Slice From List    ${product_names}    0    ${amount}
     ${current_product_prices}    Get Slice From List    ${product_prices}    0    ${amount}
@@ -29,9 +29,9 @@ customer removes the following amount of products from cart: ${amount}
 ### THEN ###
 
 the shopping cart should contain correct products
-    ${product_names}    PO: Common: Get Texts    CartItemNames
-    ${product_prices}    PO: Common: Get Texts    CartItemPrices
-    ${product_descs}    PO: Common: Get Texts    CartItemDescriptions
+    ${product_names}    PO: Page: Get Texts    CartItemNames
+    ${product_prices}    PO: Page: Get Texts    CartItemPrices
+    ${product_descs}    PO: Page: Get Texts    CartItemDescriptions
     ${count}    Get Length    ${current_shopping_cart}[Names]
     FOR    ${i}    IN RANGE    ${0}    ${count}
         Should Be Equal As Strings    ${product_names}[${i}]    ${current_shopping_cart}[Names][${i}]

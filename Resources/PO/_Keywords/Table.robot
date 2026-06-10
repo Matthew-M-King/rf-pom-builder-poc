@@ -1,5 +1,5 @@
 *** Settings ***
-Resource    Common.robot
+Resource    Page.robot
 
 
 *** Variables ***
@@ -19,6 +19,7 @@ PO: Table: Assert Table Content
         ${row_index}    <-    ${1}
 
         FOR    ${expected_table_cell_value}    IN    @{rows}
+            ${text_result}    Create List    PASS    ${EMPTY}
             ${current_cell}    Format String    ${locator_table_cell}    ${row_index}    ${col_index}
             ${current_table_cell}    <-    ${table_locator}${current_cell}
             ${locator_result}    Run Keyword And Ignore Error    Get Text    ${current_table_cell}
@@ -43,9 +44,10 @@ PO: Table: Assert Table Content
             ${row_index}    Evaluate    ${row_index}+1
         END
     END
-    ${ret}    Evaluate    len(${results})==0
-    Return From Keyword If    ${ret}    ${TRUE}
+
+    Return From Keyword If    not ${results}
 
     FOR    ${msg}    IN    @{results}
         Log    ${msg}    WARN
     END
+    Fail    Table content or table definition was incorrect

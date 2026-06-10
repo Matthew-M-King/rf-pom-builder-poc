@@ -1,7 +1,7 @@
 """ This file contains settings desired for the app under test.
 Where ${target_app} specifies the desired system details as returned by the get_variables() special function.
 See the following URL for details:
-http://robotframework.org/robotframework/latest/RobotFrameworkUserGuide.html#getting-variables-from-a-special-function
+https://robotframework.org/robotframework/latest/RobotFrameworkUserGuide.html#getting-variables-from-a-special-function
 """
 
 app1 = {
@@ -17,9 +17,9 @@ app2 = {
     }
 
 
-
 def get_variables(arg):
     if arg == 'SwagLabs':
         return app1
     elif arg == 'ChallengingDom':
         return app2
+    raise ValueError(f"Unknown target_app '{arg}'. Valid options: SwagLabs, ChallengingDom")

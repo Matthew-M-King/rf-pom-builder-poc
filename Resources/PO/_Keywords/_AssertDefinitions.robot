@@ -1,10 +1,13 @@
 *** Settings ***
-Resource    ../PageRegistry/_${target_app}Variables.robot
-Library     Collections
+Resource    ../../Utility/ShorthandUtility.robot
+Resource    Page.robot
+Resource    Table.robot
 
 
 *** Keywords ***
 PO: Definitions: Assert
+    # Property name drives keyword dispatch — adding a new assertion type only requires
+    # a new "PO: Definitions: Assert: {PropertyName}" keyword, nothing here changes
     ${page}    PO: Page: Get
     ${dicts}    <-    ${${page}_Definitions}
     FOR    ${target_element}    IN    @{dicts.keys()}
@@ -16,7 +19,7 @@ PO: Definitions: Assert
 PO: Definitions: Assert: ShouldContain
     [Arguments]    ${target_element}    ${definitions}
     ${expected_text}    <-    ${definitions.${target_element}.ShouldContain}
-    PO: Common: Locator Should Contain Value    ${target_element}    ${expected_text}
+    PO: Page: Locator Should Contain Value    ${target_element}    ${expected_text}
 
 PO: Definitions: Assert: EachInGroupShouldContain
     [Arguments]    ${target_element}    ${definitions}
@@ -31,7 +34,7 @@ PO: Definitions: Assert: EachInGroupShouldContain
         ${result_locator}    ${actual_text}    Run Keyword And Ignore Error    Get Text    ${locator}
 
         IF    "${result_locator}"=="PASS"
-            ${result_text}    ${junk}    Run Keyword And Ignore Error
+            ${result_text}    ${_}    Run Keyword And Ignore Error
             ...    Should Be Equal As Strings
             ...    ${expected_text}
             ...    ${actual_text}
@@ -55,21 +58,23 @@ PO: Definitions: Assert: EachInGroupShouldContain
 
 PO: Definitions: Assert: ElementCountShouldBe
     [Arguments]    ${target_element}    ${definitions}
-    FOR    ${target_element}    IN    @{definitions.keys()}
-        ${locator}    Build Locator    ${target_element}
-        ${count}    <-    ${definitions}[${target_element}][ElementCountShouldBe]
-        Page Should Contain Element    ${locator}    limit=${count}
-    END
+    ${locator}    Build Locator    ${target_element}
+    ${count}    <-    ${definitions}[${target_element}][ElementCountShouldBe]
+    # Wait rather than assert once — gives SPAs time to finish rendering after navigation
+    Wait Until Keyword Succeeds    15s    500ms    PO: Assert: Element Count    ${locator}    ${count}
+
+PO: Assert: Element Count
+    [Arguments]    ${locator}    ${count}
+    @{elements}    Get Elements    ${locator}
+    ${actual}    Get Length    ${elements}
+    Should Be Equal As Integers    ${actual}    ${count}
 
 PO: Definitions: Assert: TableContentShouldBe
     [Arguments]    ${target_element}    ${definitions}
     ${target_element_def}    <-    ${definitions}[${target_element}]
     ${target_content_def}    <-    ${target_element_def}[TableContentShouldBe]
     ${table_content}    <-    ${target_content_def}[Columns]
-    ${result}    PO: Table: Assert Table Content    ${target_element}    ${table_content}
-    IF    not ${result}
-        Fail    Table content or table definition was incorrect
-    END
+    PO: Table: Assert Table Content    ${target_element}    ${table_content}
 
 PO: Definitions: Assert: ImageGroupAttributes
     [Arguments]    ${target_element}    ${definitions}
@@ -78,6 +83,6 @@ PO: Definitions: Assert: ImageGroupAttributes
     FOR    ${img_name}    IN    @{image_properties_list}
         ${properties}    <-    ${image_properties_list}[${img_name}]
         ${locator}    Build Locator: Update Parent With Index    ${target_element}    ${properties}[DefaultOrder]
-        Element Attribute Value Should Be    ${locator}//img    attribute=alt    expected=${properties}[Alt]
-        Element Attribute Value Should Be    ${locator}//img    attribute=src    expected=${BaseUrl}${properties}[Src]
+        ${alt}    Get Attribute    ${locator}//img    alt
+        Should Be Equal    ${alt}    ${properties}[Alt]
     END

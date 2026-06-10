@@ -1,0 +1,9 @@
+CheckoutPage_Objects:
+  # Add locator definitions here. Supported strategies:
+  # XPathLookup, WithAttribute, WithText, WithContainsAttribute,
+  # WithType, ParentReference{Strategy}, SelectFromGroupByCSSProperty
+  #
+  # Example:
+  #   SubmitButton:
+  #     LocatorStrategy: XPathLookup
+  #     Xpath: //button[@type='submit']
