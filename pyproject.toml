@@ -1,5 +1,4 @@
 [tool.robocop]
-include = ["all"]
 exclude = [
     "missing-doc-keyword",
     "missing-doc-test-case",
