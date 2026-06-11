@@ -26,8 +26,10 @@ exclude = [
     "possible-variable-overwriting",
     # minor preference
     "could-be-test-tags",
+    # style preference: multi-line IF/RETURN is more readable than inline IF for RETURN guards
+    "inline-if-can-be-used",
 ]
 configure = [
-    # 160 accommodates inline JS function strings in List.robot and similar
-    "line-too-long:line_length:160",
+    # 170 accommodates inline JS function strings in List.robot (max observed: 166 chars)
+    "line-too-long:line_length:170",
 ]
