@@ -1,12 +1,33 @@
 [tool.robocop]
 exclude = [
+    # docs: keyword, test case, and suite docstrings optional in this project
     "missing-doc-keyword",
     "missing-doc-test-case",
     "missing-doc-suite",
     "too-few-calls-in-keyword",
     "too-many-calls-in-keyword",
+    # intentional: ShorthandUtility uses single-char and ? operators by design
+    "not-allowed-char-in-name",
+    "underscore-in-keyword-name",
+    # intentional: BDD bindings use sentence-case; framework uses PO: Module: Action convention
+    "wrong-case-in-keyword-name",
+    "too-long-keyword",
+    # intentional: regex capture groups (${r:(.*)?}) in bindings are unused by design
+    "unused-argument",
+    # intentional: session-cache pattern uses Set Suite/Test Variable
+    "no-suite-variable",
+    "no-test-variable",
+    "non-local-variables-should-be-uppercase",
+    "section-variable-not-uppercase",
+    "empty-variable",
+    # intentional: .robot extension used throughout; can-be-resource-file is informational only
+    "can-be-resource-file",
+    # false positive in sort assertion keyword
+    "possible-variable-overwriting",
+    # minor preference
+    "could-be-test-tags",
 ]
 configure = [
-    "line-too-long:line_length:120",
-    "wrong-case-in-keyword-name:convention:first_word_capitalized",
+    # 160 accommodates inline JS function strings in List.robot and similar
+    "line-too-long:line_length:160",
 ]

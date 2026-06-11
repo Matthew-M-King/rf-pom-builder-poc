@@ -1,6 +1,6 @@
 *** Settings ***
-Library     Browser
 Library     String
+Library     Browser
 Resource    Page.robot
 
 

@@ -1,7 +1,7 @@
 *** Settings ***
-Library     Browser
 Library     Collections
 Library     String
+Library     Browser
 Resource    LocatorBuilder.robot
 
 
@@ -16,7 +16,7 @@ PO: Page: Get Texts
         ${element_text}    Get Text    ${element}
         Append To List    ${element_text_list}    ${element_text}
     END
-    [Return]    ${element_text_list}
+    RETURN    ${element_text_list}
 
 PO: Page: Locator Should Contain Value
     [Arguments]    ${target_element}    ${expected_text}
@@ -49,7 +49,6 @@ PO: Page: Assert Element Group Sort Order
 
     IF    "numerical" in "${order}"
         FOR    ${text}    IN    @{texts}
-            ${match}    <-    ${NONE}
             ${matches}    Get Regexp Matches    ${text}    \\d+
             IF    ${matches}
                 ${values}    <-    ${EMPTY}

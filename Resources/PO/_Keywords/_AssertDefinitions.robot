@@ -49,7 +49,9 @@ PO: Definitions: Assert: EachInGroupShouldContain
             Append To List    ${results}    FAIL - ${actual_text}
         END
     END
-    Return From Keyword IF    not ${results}
+    IF    not ${results}
+        RETURN
+    END
 
     FOR    ${msg}    IN    @{results}
         Log    ${msg}    WARN

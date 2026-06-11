@@ -11,11 +11,11 @@ PO: Page: Get
         FOR    ${page_name}    IN    @{UrlsToPages}
             ${expected_url}    PO: Page: Get Page Url From Registry    ${page_name}
             IF    "${expected_url}"=="${url}"
-                Return From Keyword    ${page_name}
+                RETURN    ${page_name}
             END
         END
     ELSE
-        Return From Keyword    ${dynamic_page_name}
+        RETURN    ${dynamic_page_name}
     END
 
 PO: Page: Navigate To
@@ -31,7 +31,9 @@ PO: Page: Navigate To
 
     IF    "${current_login_user}"
         IF    "${current_login_user}"=="${user}"
-            Return From Keyword If    ${is_page}
+            IF    ${is_page}
+                RETURN
+            END
         ELSE
             IF    "${actual_page}"!="${default_page}"
                 ${page_url}    PO: Page: Get Page Url From Registry    ${default_page}
@@ -50,7 +52,9 @@ PO: Page: Navigate To
             Wait Until Keyword Succeeds    30s    500ms    URL Should Not Be    ${login_url}
             Set Suite Variable    ${current_login_user}    ${user}
             ${actual_page}    PO: Page: Get
-            Return From Keyword If    ${is_page}
+            IF    ${is_page}
+                RETURN
+            END
         END
         ${page_url}    PO: Page: Get Page Url From Registry    ${page}
         Go To    ${page_url}

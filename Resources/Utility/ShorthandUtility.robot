@@ -10,7 +10,9 @@ Library             Collections
     ...    Example:
     ...    ${example_id}    ??    ${example_id}    Get Default Example Id
     [Arguments]    ${variable}    ${keyword}    @{args}    &{kwargs}
-    Return From Keyword If    "${variable}"!="${EMPTY}" and "${variable}"!="${NONE}"    ${variable}
+    IF    "${variable}"!="${EMPTY}" and "${variable}"!="${NONE}"
+        RETURN    ${variable}
+    END
     Run Keyword And Return    ${keyword}    @{args}    &{kwargs}
 
 Key->
@@ -18,7 +20,9 @@ Key->
     ...    ${example_id}    key->    ${example_id}    Get Default Example Id
     [Arguments]    ${dict}    ${key}    ${keyword}    @{args}    &{kwargs}
     ${is_key}    Run Keyword And Return Status    Dictionary Should Contain Key    ${dict}    ${key}
-    Return From Keyword If    not ${is_key}
+    IF    not ${is_key}
+        RETURN
+    END
     Run Keyword And Return    ${keyword}    @{args}    &{kwargs}
 
 Is Key?
@@ -30,13 +34,15 @@ Is Key?
     [Documentation]    Short-hand syntax for:    Run Keyword If    "${variable}"!="${EMPTY}"
     ...    Does not work, if the keyword to be called is actually 'Run Keywords'.
     [Arguments]    ${variable}    ${keyword}    @{args}    &{kwargs}
-    Return From Keyword If    "${variable}"=="${EMPTY}"
+    IF    "${variable}"=="${EMPTY}"
+        RETURN
+    END
     Run Keyword And Return    ${keyword}    @{args}    &{kwargs}
 
 <-
     [Documentation]    Shortened syntax for "Set Variable" - returns the argument.
     [Arguments]    ${value}
-    [Return]    ${value}
+    RETURN    ${value}
 
 ->FOR
     [Documentation]    Provides simple facility to execute the same keyword for each item on a list.

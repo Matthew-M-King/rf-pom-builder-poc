@@ -10,7 +10,6 @@ ${locator_table_cell}       //tbody/tr[{0}]//td[{1}]
 PO: Table: Assert Table Content
     [Arguments]    ${target_element}    ${expected_table_content}
     ${table_locator}    Build Locator    ${target_element}
-    ${table_header}    <-    ${table_locator}//th
     @{results}    Create List
 
     FOR    ${col}    IN    @{expected_table_content}
@@ -45,7 +44,9 @@ PO: Table: Assert Table Content
         END
     END
 
-    Return From Keyword If    not ${results}
+    IF    not ${results}
+        RETURN
+    END
 
     FOR    ${msg}    IN    @{results}
         Log    ${msg}    WARN

@@ -1,7 +1,7 @@
 *** Settings ***
-Library     Browser
 Library     Collections
 Library     String
+Library     Browser
 Resource    ../../Utility/ShorthandUtility.robot
 Resource    Navigation.robot
 Resource    CustomStrategies.robot
@@ -46,7 +46,7 @@ Build Locator
         ...    [Locator Build] app=${target_app} page=${page} element=${target_element} strategy=${locator_strategy}\n  ${locator}
         ...    WARN
     END
-    [Return]    ${locator}
+    RETURN    ${locator}
 
 Build Locator: ParentReference
     # Strips "ParentReference" prefix from the strategy name, resolves the parent element
@@ -102,14 +102,20 @@ Build Locator: SelectFromGroupByCSSProperty
     FOR    ${element}    IN    @{group}
         ${element_property}    Evaluate JavaScript    ${element}
         ...    e => window.getComputedStyle(e).getPropertyValue('${css_property_type}')
-        Return From Keyword If    "${element_property}"=="${properties.PropertyValue}"    ${element}
+        IF    "${element_property}"=="${properties.PropertyValue}"
+            RETURN    ${element}
+        END
     END
 
 Build Locator: Add Relationship Axes
     [Arguments]    ${properties}    ${page}    ${extension}=${EMPTY}
     ${is_relation}    Is Key?    ${properties}    UseRelation
-    Return From Keyword If    not ${is_relation}    ${EMPTY}
-    Return From Keyword If    not ${properties.UseRelation}    ${EMPTY}
+    IF    not ${is_relation}
+        RETURN    ${EMPTY}
+    END
+    IF    not ${properties.UseRelation}
+        RETURN    ${EMPTY}
+    END
     ${relation}    <-    ${properties.Relation}
     ${type}    <-    ${properties.RelationElementType}
     Run Keyword And Return    <-    //${relation}::${type}
@@ -130,7 +136,7 @@ Build Locators
         ...    ${target_element}=${locator}
         Append To List    ${locators}    ${locator_details}
     END
-    [Return]    ${locators}
+    RETURN    ${locators}
 
 Build Locator: Get Parent Target Element
     [Arguments]    ${target_element}
